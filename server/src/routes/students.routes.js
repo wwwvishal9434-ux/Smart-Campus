@@ -1,0 +1,12 @@
+const router = require('express').Router();
+const c = require('../controllers/students.controller');
+const { requireAdmin, requireStudent } = require('../middleware/auth');
+router.get('/me', requireStudent, c.me);
+router.patch('/me', requireStudent, c.updateMe);
+router.get('/options', requireAdmin, c.options);
+router.get('/', requireAdmin, c.list);
+router.post('/', requireAdmin, c.create);
+router.get('/:id', requireAdmin, c.get);
+router.put('/:id', requireAdmin, c.update);
+router.delete('/:id', requireAdmin, c.remove);
+module.exports = router;

@@ -1,0 +1,385 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+  TEACHER
+}
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+}
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+enum SubmissionStatus {
+  PENDING
+  SUBMITTED
+  LATE
+  REVIEWED
+}
+enum ExamType {
+  INTERNAL
+  PRACTICAL
+  MID_SEMESTER
+  END_SEMESTER
+}
+enum Option {
+  A
+  B
+  C
+  D
+}
+enum JobType {
+  FULL_TIME
+  INTERNSHIP
+  PART_TIME
+  CONTRACT
+}
+enum ApplicationStatus {
+  APPLIED
+  UNDER_REVIEW
+  SHORTLISTED
+  INTERVIEW
+  SELECTED
+  REJECTED
+}
+enum NotificationCategory {
+  GENERAL
+  ACADEMIC
+  EXAMINATION
+  PLACEMENT
+  ASSIGNMENT
+  EVENT
+}
+enum Audience {
+  ALL
+  STUDENTS
+  ADMINS
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  passwordHash  String
+  role          Role
+  status        AccountStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  student       Student?
+  admin         Admin?
+  teacher       Teacher?
+  resetTokens   PasswordResetToken[]
+  notifications Notification[]
+  notes         Note[]
+  assignments   Assignment[]
+}
+
+model Admin {
+  id       String @id @default(cuid())
+  userId   String @unique
+  fullName String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Course {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  code        String    @unique
+  semesters   Int       @default(6)
+  description String?
+  createdAt   DateTime  @default(now())
+  students    Student[]
+  subjects    Subject[]
+  jobs        Job[]
+}
+
+model Teacher {
+  id          String    @id @default(cuid())
+  userId      String?   @unique
+  name        String
+  email       String    @unique
+  phone       String?
+  department  String
+  designation String
+  createdAt   DateTime  @default(now())
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  subjects    Subject[]
+}
+
+model Student {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  fullName     String
+  enrollmentNo String   @unique
+  phone        String?
+  address      String?
+  avatarUrl    String?
+  courseId     String
+  semester     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  attendance   Attendance[]
+  submissions  AssignmentSubmission[]
+  attempts     ExamAttempt[]
+  results      AcademicResult[]
+  applications JobApplication[]
+  @@index([courseId, semester])
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  courseId    String
+  teacherId   String?
+  name        String
+  code        String
+  semester    Int
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  teacher     Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  attendance  Attendance[]
+  notes       Note[]
+  assignments Assignment[]
+  exams       Examination[]
+  results     AcademicResult[]
+  @@unique([courseId, code])
+  @@index([courseId, semester])
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  studentId String
+  subjectId String
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject   Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  @@unique([studentId, subjectId, date])
+  @@index([subjectId, date])
+}
+
+model Note {
+  id           String   @id @default(cuid())
+  subjectId    String
+  uploadedById String
+  title        String
+  description  String?
+  semester     Int
+  fileKey      String
+  fileName     String
+  fileSize     Int
+  mimeType     String
+  createdAt    DateTime @default(now())
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  @@index([subjectId])
+}
+
+model Assignment {
+  id           String   @id @default(cuid())
+  subjectId    String
+  createdById  String
+  title        String
+  instructions String
+  deadline     DateTime
+  allowLate    Boolean  @default(false)
+  maxMarks     Int      @default(10)
+  fileKey      String?
+  fileName     String?
+  createdAt    DateTime @default(now())
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdBy    User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  submissions  AssignmentSubmission[]
+  @@index([subjectId, deadline])
+}
+
+model AssignmentSubmission {
+  id           String           @id @default(cuid())
+  assignmentId String
+  studentId    String
+  fileKey      String
+  fileName     String
+  status       SubmissionStatus @default(SUBMITTED)
+  marks        Float?
+  feedback     String?
+  submittedAt  DateTime         @default(now())
+  reviewedAt   DateTime?
+  assignment   Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  @@unique([assignmentId, studentId])
+}
+
+model Examination {
+  id              String   @id @default(cuid())
+  subjectId       String
+  title           String
+  instructions    String?
+  examDate        DateTime
+  durationMinutes Int
+  totalMarks      Int
+  passingMarks    Int
+  maxAttempts     Int      @default(1)
+  showAnswers     Boolean  @default(false)
+  isPublished     Boolean  @default(false)
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  questions       Question[]
+  attempts        ExamAttempt[]
+  @@index([subjectId, examDate])
+}
+
+model Question {
+  id            String      @id @default(cuid())
+  examId        String
+  text          String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctOption Option
+  marks         Int         @default(1)
+  exam          Examination @relation(fields: [examId], references: [id], onDelete: Cascade)
+  answers       ExamAnswer[]
+  @@index([examId])
+}
+
+model ExamAttempt {
+  id          String      @id @default(cuid())
+  examId      String
+  studentId   String
+  attemptNo   Int         @default(1)
+  startedAt   DateTime    @default(now())
+  submittedAt DateTime?
+  score       Float?
+  percentage  Float?
+  passed      Boolean?
+  exam        Examination @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers     ExamAnswer[]
+  @@unique([examId, studentId, attemptNo])
+}
+
+model ExamAnswer {
+  id         String      @id @default(cuid())
+  attemptId  String
+  questionId String
+  selected   Option?
+  isCorrect  Boolean     @default(false)
+  attempt    ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question   Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  @@unique([attemptId, questionId])
+}
+
+model AcademicResult {
+  id            String   @id @default(cuid())
+  studentId     String
+  subjectId     String
+  semester      Int
+  examType      ExamType
+  maxMarks      Float
+  obtainedMarks Float
+  createdAt     DateTime @default(now())
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  @@unique([studentId, subjectId, semester, examType])
+}
+
+model Company {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  logoUrl      String?
+  website      String?
+  description  String?
+  industry     String?
+  location     String?
+  contactEmail String?
+  createdAt    DateTime @default(now())
+  jobs         Job[]
+}
+
+model Job {
+  id                String   @id @default(cuid())
+  companyId         String
+  title             String
+  description       String
+  location          String
+  jobType           JobType
+  package           String?
+  minPercentage     Float    @default(0)
+  eligibleSemesters Int[]
+  skills            String[]
+  deadline          DateTime
+  openings          Int      @default(1)
+  createdAt         DateTime @default(now())
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  eligibleCourses   Course[]
+  applications      JobApplication[]
+  @@index([companyId, deadline])
+}
+
+model JobApplication {
+  id        String            @id @default(cuid())
+  jobId     String
+  studentId String
+  status    ApplicationStatus @default(APPLIED)
+  coverNote String?
+  appliedAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  student   Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  @@unique([jobId, studentId])
+  @@index([status])
+}
+
+model Notification {
+  id          String               @id @default(cuid())
+  title       String
+  message     String
+  category    NotificationCategory @default(GENERAL)
+  audience    Audience             @default(ALL)
+  createdById String
+  createdAt   DateTime             @default(now())
+  createdBy   User                 @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  @@index([createdAt])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  eventDate   DateTime @db.Date
+  eventTime   String?
+  location    String
+  organizer   String
+  createdAt   DateTime @default(now())
+  @@index([eventDate])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}

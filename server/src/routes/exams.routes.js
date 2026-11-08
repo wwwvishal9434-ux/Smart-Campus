@@ -1,0 +1,14 @@
+const router = require('express').Router();
+const c = require('../controllers/exams.controller');
+const { requireAdmin, requireStudent } = require('../middleware/auth');
+router.get('/mine', ...requireStudent, c.mine);
+router.post('/attempts/:attemptId/submit', ...requireStudent, c.submit);
+router.post('/:id/start', ...requireStudent, c.start);
+router.get('/', ...requireAdmin, c.list);
+router.post('/', ...requireAdmin, c.create);
+router.put('/:id', ...requireAdmin, c.update);
+router.delete('/questions/:qid', ...requireAdmin, c.removeQuestion);
+router.delete('/:id', ...requireAdmin, c.remove);
+router.get('/:id/questions', ...requireAdmin, c.questions);
+router.post('/:id/questions', ...requireAdmin, c.addQuestion);
+module.exports = router;

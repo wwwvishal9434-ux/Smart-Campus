@@ -1,0 +1,10 @@
+const router = require('express').Router();
+const rateLimit = require('express-rate-limit');
+const c = require('../controllers/contact.controller');
+const { requireAdmin } = require('../middleware/auth');
+const limiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 10, message: { success: false, message: 'Too many messages, try again later' } });
+router.post('/', limiter, c.submit);
+router.get('/', requireAdmin, c.list);
+router.patch('/:id/read', requireAdmin, c.markRead);
+router.delete('/:id', requireAdmin, c.remove);
+module.exports = router;

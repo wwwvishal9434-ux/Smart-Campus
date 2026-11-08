@@ -1,0 +1,23 @@
+const router = require('express').Router();
+router.get('/health', (req, res) => res.json({ success: true, message: 'Smart Campus API running' }));
+router.use('/auth', require('./auth.routes'));
+router.use('/courses', require('./courses.routes'));
+router.use('/contact', require('./contact.routes'));
+router.use('/students', require('./students.routes'));
+router.use('/teachers', require('./teachers.routes'));
+router.use('/subjects', require('./subjects.routes'));
+router.use('/attendance', require('./attendance.routes'));
+router.use('/notes', require('./notes.routes'));
+router.use('/assignments', require('./assignments.routes'));
+router.use('/exams', require('./exams.routes'));
+const placement = require('./placement.routes');
+router.use('/results', require('./results.routes'));
+router.use('/companies', placement.companies);
+router.use('/jobs', placement.jobs);
+router.use('/applications', placement.applications);
+const feeds = require('./feeds.routes');
+router.use('/notifications', feeds.notifications);
+router.use('/events', feeds.events);
+router.use('/dashboard', require('./dashboard.routes'));
+// Next: full seed, tests
+module.exports = router;

@@ -1,0 +1,14 @@
+const router = require('express').Router();
+const c = require('../controllers/assignments.controller');
+const { authenticate, requireAdmin, requireStudent } = require('../middleware/auth');
+const { submissionUpload } = require('../config/upload');
+router.get('/mine', ...requireStudent, c.mine);
+router.get('/', ...requireAdmin, c.list);
+router.post('/', ...requireAdmin, submissionUpload.single('file'), c.create);
+router.get('/:id/submissions', ...requireAdmin, c.submissions);
+router.post('/:id/submit', ...requireStudent, submissionUpload.single('file'), c.submit);
+router.patch('/submissions/:id/review', ...requireAdmin, c.review);
+router.get('/submissions/:id/download', authenticate, c.downloadSubmission);
+router.get('/:id/reference', authenticate, c.downloadReference);
+router.delete('/:id', ...requireAdmin, c.remove);
+module.exports = router;
