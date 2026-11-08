@@ -1,0 +1,24 @@
+# ONE-CLICK deployment on Render (free): database + API + website in a single service, one URL.
+# Render dashboard -> New -> Blueprint -> pick this repository -> Apply.
+databases:
+  - name: smart-campus-db
+    plan: free
+    databaseName: smart_campus
+    user: smart_campus
+services:
+  - type: web
+    name: smart-campus
+    runtime: node
+    plan: free
+    buildCommand: cd client && npm install --include=dev && npm run build && cd ../server && npm install
+    startCommand: cd server && npm run start:render   # applies migrations, loads demo data on first start only, starts the server
+    healthCheckPath: /api/health
+    envVars:
+      - { key: NODE_VERSION, value: 20 }
+      - { key: NODE_ENV, value: production }
+      - { key: DATABASE_URL, fromDatabase: { name: smart-campus-db, property: connectionString } }
+      - { key: JWT_SECRET, generateValue: true }
+      - { key: JWT_EXPIRES_IN, value: 1d }
+      - { key: UPLOAD_DIR, value: /tmp/uploads }
+      - { key: SEED_ADMIN_PASSWORD, generateValue: true }   # read it in Render -> service -> Environment
+      - { key: SEED_STUDENT_PASSWORD, value: Student@12345 }
